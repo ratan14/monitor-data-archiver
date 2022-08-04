@@ -1,0 +1,1 @@
+To run locally: gebug start --skip-generate

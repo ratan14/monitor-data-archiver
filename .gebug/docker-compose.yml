@@ -1,0 +1,14 @@
+version: '3'
+services:
+  gebug-monitor-data-archiver:
+    build:
+      context: ..
+      dockerfile: .gebug/Dockerfile
+    volumes:
+      - ../:/src:ro
+      # Bind the local aws configuration for access Dynamo
+      - type: bind
+        source: ~/.aws
+        target: /root/.aws/
+    ports:
+      - 8080:8080
