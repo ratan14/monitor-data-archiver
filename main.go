@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -19,7 +20,7 @@ type Event struct {
 }
 
 type MonitorData struct {
-	MonitorId string                 `json:"monitorId"`
+	AlertId   string                 `json:"alertId"`
 	TimeStamp string                 `json:"timestamp"`
 	OrgId     string                 `json:"orgId"`
 	Values    map[string]interface{} `json:"values"`
@@ -50,8 +51,21 @@ func HandleRequest(ctx context.Context, event Event) (string, error) {
 	dynamoClient := dynamodb.NewFromConfig(cfg)
 
 	allMonitorData, err := fetchAllMonitorData(dynamoClient)
+	monitorDataMap := map[string][]MonitorData{}
 
-	fmt.Println("all monitor data ", allMonitorData)
+	for _, data := range allMonitorData {
+		monitorDataMap[data.AlertId] = append(monitorDataMap[data.AlertId], data)
+	}
+
+	//for each entry in the monitorDataMap, start a new thread for data compiling
+	var wg sync.WaitGroup
+	for _, dataArray := range monitorDataMap {
+		wg.Add(1)
+		go compileMonitorData(dataArray)
+	}
+	wg.Wait()
+
+	fmt.Println("all monitor data ", monitorDataMap)
 
 	return fmt.Sprintf("Hello %s", event.Name), nil
 }
@@ -84,4 +98,8 @@ func fetchAllMonitorData(client *dynamodb.Client) ([]MonitorData, error) {
 		result = append(result, monitorData)
 	}
 	return result, nil
+}
+
+func compileMonitorData(dataArray []MonitorData) {
+
 }
